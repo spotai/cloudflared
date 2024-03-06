@@ -35,6 +35,15 @@ var (
 		},
 		[]string{"status_code"},
 	)
+	earlyResponseByCode = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: connection.MetricsNamespace,
+			Subsystem: connection.TunnelSubsystem,
+			Name:      "early_response_by_code",
+			Help:      "Count of responses by HTTP status code, incremented as soon as it is known",
+		},
+		[]string{"status_code"},
+	)
 	requestErrors = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Namespace: connection.MetricsNamespace,
@@ -83,6 +92,7 @@ func init() {
 		totalRequests,
 		concurrentRequests,
 		responseByCode,
+		earlyResponseByCode,
 		requestErrors,
 		activeTCPSessions,
 		totalTCPSessions,

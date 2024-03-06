@@ -217,6 +217,7 @@ func (p *Proxy) proxyHTTPRequest(
 	tracing.EndWithStatusCode(ttfbSpan, resp.StatusCode)
 	defer resp.Body.Close()
 
+	earlyResponseByCode.WithLabelValues(strconv.Itoa(resp.StatusCode)).Inc()
 	headers := make(http.Header, len(resp.Header))
 	// copy headers
 	for k, v := range resp.Header {
