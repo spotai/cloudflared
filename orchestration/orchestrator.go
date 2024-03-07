@@ -136,7 +136,7 @@ func (o *Orchestrator) updateIngress(ingressRules ingress.Ingress, warpRouting i
 	if err := ingressRules.StartOrigins(o.log, proxyShutdownC); err != nil {
 		return errors.Wrap(err, "failed to start origin")
 	}
-	proxy := proxy.NewOriginProxy(ingressRules, warpRouting, o.tags, o.config.WriteTimeout, o.log)
+	proxy := proxy.NewOriginProxy(ingressRules, warpRouting, o.tags, o.config.WriteTimeout, o.log, ingressRules.MaxConcurrentRequests)
 	o.proxy.Store(proxy)
 	o.config.Ingress = &ingressRules
 	o.config.WarpRouting = warpRouting

@@ -79,8 +79,9 @@ type Ingress struct {
 	// Set of ingress rules that are not added to remote config, e.g. management
 	InternalRules []Rule
 	// Rules that are provided by the user from remote or local configuration
-	Rules    []Rule              `json:"ingress"`
-	Defaults OriginRequestConfig `json:"originRequest"`
+	Rules                 []Rule              `json:"ingress"`
+	Defaults              OriginRequestConfig `json:"originRequest"`
+	MaxConcurrentRequests uint64              `json:"maxConcurrentRequests"`
 }
 
 // ParseIngress parses ingress rules, but does not send HTTP requests to the origins.
