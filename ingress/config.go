@@ -98,7 +98,7 @@ func (rc *RemoteConfig) UnmarshalJSON(b []byte) error {
 		globalOriginRequestConfig = &config.OriginRequestConfig{}
 	}
 
-	ingress, err := validateIngress(rawConfig.IngressRules, originRequestFromConfig(*globalOriginRequestConfig))
+	ingress, err := validateIngress(rawConfig.IngressRules, originRequestFromConfig(*globalOriginRequestConfig), 0)
 	if err != nil {
 		return err
 	}
