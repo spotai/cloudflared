@@ -84,15 +84,6 @@ func (p *Proxy) ProxyHTTP(
 	incrementRequests()
 	defer decrementConcurrentRequests()
 
-	if p.maxConcurrentRequests > 0 && readConcurrentRequests() > p.maxConcurrentRequests {
-		p.log.Warn().Msg("max concurrent requests exceeded, failing request")
-		err := w.WriteRespHeaders(http.StatusTooManyRequests, nil)
-		if err != nil {
-			return errors.Wrap(err, "Error writing response header")
-		}
-		return nil
-	}
-
 	req := tr.Request
 	p.appendTagHeaders(req)
 
@@ -109,6 +100,18 @@ func (p *Proxy) ProxyHTTP(
 			return nil
 		}
 		return err
+	}
+
+	// Fail request if over concurrency limit
+	if p.maxConcurrentRequests > 0 && readConcurrentRequests() > p.maxConcurrentRequests {
+		resp := http.Response{StatusCode: http.StatusTooManyRequests}
+		resp.Status = http.StatusText(resp.StatusCode)
+		err := w.WriteRespHeaders(resp.StatusCode, nil)
+		if err != nil {
+			return errors.Wrap(err, "Error writing response header")
+		}
+		logOriginHTTPResponse(&logger, &resp)
+		return nil
 	}
 
 	switch originProxy := rule.Service.(type) {
