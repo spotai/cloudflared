@@ -249,11 +249,12 @@ type IngressIPRule struct {
 }
 
 type Configuration struct {
-	TunnelID      string `yaml:"tunnel"`
-	Ingress       []UnvalidatedIngressRule
-	WarpRouting   WarpRoutingConfig   `yaml:"warp-routing"`
-	OriginRequest OriginRequestConfig `yaml:"originRequest"`
-	sourceFile    string
+	TunnelID              string `yaml:"tunnel"`
+	Ingress               []UnvalidatedIngressRule
+	WarpRouting           WarpRoutingConfig   `yaml:"warp-routing"`
+	OriginRequest         OriginRequestConfig `yaml:"originRequest"`
+	MaxConcurrentRequests uint64              `yaml:"maxConcurrentRequests"`
+	sourceFile            string
 }
 
 type WarpRoutingConfig struct {

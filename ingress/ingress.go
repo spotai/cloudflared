@@ -79,8 +79,9 @@ type Ingress struct {
 	// Set of ingress rules that are not added to remote config, e.g. management
 	InternalRules []Rule
 	// Rules that are provided by the user from remote or local configuration
-	Rules    []Rule              `json:"ingress"`
-	Defaults OriginRequestConfig `json:"originRequest"`
+	Rules                 []Rule              `json:"ingress"`
+	Defaults              OriginRequestConfig `json:"originRequest"`
+	MaxConcurrentRequests uint64              `json:"maxConcurrentRequests"`
 }
 
 // ParseIngress parses ingress rules, but does not send HTTP requests to the origins.
@@ -88,7 +89,7 @@ func ParseIngress(conf *config.Configuration) (Ingress, error) {
 	if conf == nil || len(conf.Ingress) == 0 {
 		return Ingress{}, ErrNoIngressRules
 	}
-	return validateIngress(conf.Ingress, originRequestFromConfig(conf.OriginRequest))
+	return validateIngress(conf.Ingress, originRequestFromConfig(conf.OriginRequest), conf.MaxConcurrentRequests)
 }
 
 // ParseIngressFromConfigAndCLI will parse the configuration rules from config files for ingress
@@ -242,7 +243,7 @@ func validateAccessConfiguration(cfg *config.AccessConfig) error {
 	return nil
 }
 
-func validateIngress(ingress []config.UnvalidatedIngressRule, defaults OriginRequestConfig) (Ingress, error) {
+func validateIngress(ingress []config.UnvalidatedIngressRule, defaults OriginRequestConfig, maxConcurrentRequests uint64) (Ingress, error) {
 	rules := make([]Rule, len(ingress))
 	for i, r := range ingress {
 		cfg := setConfig(defaults, r.OriginRequest)
@@ -355,7 +356,7 @@ func validateIngress(ingress []config.UnvalidatedIngressRule, defaults OriginReq
 			Config:           cfg,
 		}
 	}
-	return Ingress{Rules: rules, Defaults: defaults}, nil
+	return Ingress{Rules: rules, Defaults: defaults, MaxConcurrentRequests: maxConcurrentRequests}, nil
 }
 
 func validateHostname(r config.UnvalidatedIngressRule, ruleIndex, totalRules int) error {

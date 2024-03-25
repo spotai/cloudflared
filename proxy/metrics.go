@@ -2,6 +2,8 @@ package proxy
 
 import (
 	"github.com/prometheus/client_golang/prometheus"
+	"math"
+	"reflect"
 
 	"github.com/cloudflare/cloudflared/connection"
 )
@@ -32,6 +34,15 @@ var (
 			Subsystem: connection.TunnelSubsystem,
 			Name:      "response_by_code",
 			Help:      "Count of responses by HTTP status code",
+		},
+		[]string{"status_code"},
+	)
+	earlyResponseByCode = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Namespace: connection.MetricsNamespace,
+			Subsystem: connection.TunnelSubsystem,
+			Name:      "early_response_by_code",
+			Help:      "Count of responses by HTTP status code, incremented as soon as it is known",
 		},
 		[]string{"status_code"},
 	)
@@ -83,6 +94,7 @@ func init() {
 		totalRequests,
 		concurrentRequests,
 		responseByCode,
+		earlyResponseByCode,
 		requestErrors,
 		activeTCPSessions,
 		totalTCPSessions,
@@ -109,4 +121,17 @@ func incrementTCPRequests() {
 func decrementTCPConcurrentRequests() {
 	decrementConcurrentRequests()
 	activeTCPSessions.Dec()
+}
+
+// Reads the current value of concurrentRequests.
+// The Gauge interface does not export a method to do this, so
+// use reflection. This read is not technically thread-safe
+// but that's fine because we just need an approximate value.
+func readConcurrentRequests() uint64 {
+	val := reflect.ValueOf(concurrentRequests)
+	val = val.Elem()
+	f := val.FieldByName("valBits")
+	bits := f.Uint()
+	fVal := math.Float64frombits(bits)
+	return uint64(fVal)
 }

@@ -30,11 +30,12 @@ const (
 
 // Proxy represents a means to Proxy between cloudflared and the origin services.
 type Proxy struct {
-	ingressRules ingress.Ingress
-	warpRouting  *ingress.WarpRoutingService
-	management   *ingress.ManagementService
-	tags         []tunnelpogs.Tag
-	log          *zerolog.Logger
+	ingressRules          ingress.Ingress
+	warpRouting           *ingress.WarpRoutingService
+	management            *ingress.ManagementService
+	tags                  []tunnelpogs.Tag
+	log                   *zerolog.Logger
+	maxConcurrentRequests uint64
 }
 
 // NewOriginProxy returns a new instance of the Proxy struct.
@@ -44,11 +45,13 @@ func NewOriginProxy(
 	tags []tunnelpogs.Tag,
 	writeTimeout time.Duration,
 	log *zerolog.Logger,
+	maxConcurrentRequests uint64,
 ) *Proxy {
 	proxy := &Proxy{
-		ingressRules: ingressRules,
-		tags:         tags,
-		log:          log,
+		ingressRules:          ingressRules,
+		tags:                  tags,
+		log:                   log,
+		maxConcurrentRequests: maxConcurrentRequests,
 	}
 
 	proxy.warpRouting = ingress.NewWarpRoutingService(warpRouting, writeTimeout)
@@ -97,6 +100,18 @@ func (p *Proxy) ProxyHTTP(
 			return nil
 		}
 		return err
+	}
+
+	// Fail request if over concurrency limit
+	if p.maxConcurrentRequests > 0 && readConcurrentRequests() > p.maxConcurrentRequests {
+		resp := http.Response{StatusCode: http.StatusTooManyRequests}
+		resp.Status = http.StatusText(resp.StatusCode)
+		err := w.WriteRespHeaders(resp.StatusCode, nil)
+		if err != nil {
+			return errors.Wrap(err, "Error writing response header")
+		}
+		logOriginHTTPResponse(&logger, &resp)
+		return nil
 	}
 
 	switch originProxy := rule.Service.(type) {
@@ -217,6 +232,7 @@ func (p *Proxy) proxyHTTPRequest(
 	tracing.EndWithStatusCode(ttfbSpan, resp.StatusCode)
 	defer resp.Body.Close()
 
+	earlyResponseByCode.WithLabelValues(strconv.Itoa(resp.StatusCode)).Inc()
 	headers := make(http.Header, len(resp.Header))
 	// copy headers
 	for k, v := range resp.Header {
