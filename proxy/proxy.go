@@ -30,12 +30,13 @@ const (
 
 // Proxy represents a means to Proxy between cloudflared and the origin services.
 type Proxy struct {
-	ingressRules          ingress.Ingress
-	warpRouting           *ingress.WarpRoutingService
-	management            *ingress.ManagementService
-	tags                  []tunnelpogs.Tag
-	log                   *zerolog.Logger
-	maxConcurrentRequests uint64
+	ingressRules                             ingress.Ingress
+	warpRouting                              *ingress.WarpRoutingService
+	management                               *ingress.ManagementService
+	tags                                     []tunnelpogs.Tag
+	log                                      *zerolog.Logger
+	maxConcurrentRequests                    uint64
+	includeWebsocketsInMaxConcurrentRequests bool
 }
 
 // NewOriginProxy returns a new instance of the Proxy struct.
@@ -46,12 +47,14 @@ func NewOriginProxy(
 	writeTimeout time.Duration,
 	log *zerolog.Logger,
 	maxConcurrentRequests uint64,
+	includeWebsocketsInMaxConcurrentRequests bool,
 ) *Proxy {
 	proxy := &Proxy{
-		ingressRules:          ingressRules,
-		tags:                  tags,
-		log:                   log,
-		maxConcurrentRequests: maxConcurrentRequests,
+		ingressRules:                             ingressRules,
+		tags:                                     tags,
+		log:                                      log,
+		maxConcurrentRequests:                    maxConcurrentRequests,
+		includeWebsocketsInMaxConcurrentRequests: includeWebsocketsInMaxConcurrentRequests,
 	}
 
 	proxy.warpRouting = ingress.NewWarpRoutingService(warpRouting, writeTimeout)
@@ -83,6 +86,10 @@ func (p *Proxy) ProxyHTTP(
 ) error {
 	incrementRequests()
 	defer decrementConcurrentRequests()
+	if isWebsocket {
+		incrementConcurrentWebsocketRequests()
+		defer decrementConcurrentWebsocketRequests()
+	}
 
 	req := tr.Request
 	p.appendTagHeaders(req)
@@ -103,15 +110,25 @@ func (p *Proxy) ProxyHTTP(
 	}
 
 	// Fail request if over concurrency limit
-	if p.maxConcurrentRequests > 0 && readConcurrentRequests() > p.maxConcurrentRequests {
-		resp := http.Response{StatusCode: http.StatusTooManyRequests}
-		resp.Status = http.StatusText(resp.StatusCode)
-		err := w.WriteRespHeaders(resp.StatusCode, nil)
-		if err != nil {
-			return errors.Wrap(err, "Error writing response header")
+	if p.maxConcurrentRequests > 0 {
+		totalCount := readConcurrentRequests()
+		if !p.includeWebsocketsInMaxConcurrentRequests {
+			// Exclude websocket requests from the count
+			websocketCount := readConcurrentWebsocketRequests()
+			if totalCount >= websocketCount {
+				totalCount = totalCount - websocketCount
+			}
 		}
-		logOriginHTTPResponse(&logger, &resp)
-		return nil
+		if totalCount > p.maxConcurrentRequests {
+			resp := http.Response{StatusCode: http.StatusTooManyRequests}
+			resp.Status = http.StatusText(resp.StatusCode)
+			err := w.WriteRespHeaders(resp.StatusCode, nil)
+			if err != nil {
+				return errors.Wrap(err, "Error writing response header")
+			}
+			logOriginHTTPResponse(&logger, &resp)
+			return nil
+		}
 	}
 
 	switch originProxy := rule.Service.(type) {

@@ -249,12 +249,13 @@ type IngressIPRule struct {
 }
 
 type Configuration struct {
-	TunnelID              string `yaml:"tunnel"`
-	Ingress               []UnvalidatedIngressRule
-	WarpRouting           WarpRoutingConfig   `yaml:"warp-routing"`
-	OriginRequest         OriginRequestConfig `yaml:"originRequest"`
-	MaxConcurrentRequests uint64              `yaml:"maxConcurrentRequests"`
-	sourceFile            string
+	TunnelID                                 string `yaml:"tunnel"`
+	Ingress                                  []UnvalidatedIngressRule
+	WarpRouting                              WarpRoutingConfig   `yaml:"warp-routing"`
+	OriginRequest                            OriginRequestConfig `yaml:"originRequest"`
+	MaxConcurrentRequests                    uint64              `yaml:"maxConcurrentRequests"`
+	IncludeWebsocketsInMaxConcurrentRequests bool                `yaml:"includeWebsocketsInMaxConcurrentRequests"`
+	sourceFile                               string
 }
 
 type WarpRoutingConfig struct {
