@@ -115,7 +115,7 @@ func (p *Proxy) ProxyHTTP(
 		if !p.includeWebsocketsInMaxConcurrentRequests {
 			// Exclude websocket requests from the count
 			websocketCount := readConcurrentWebsocketRequests()
-			if totalCount > websocketCount {
+			if totalCount >= websocketCount {
 				totalCount = totalCount - websocketCount
 			}
 		}
