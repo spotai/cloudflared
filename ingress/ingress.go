@@ -91,7 +91,7 @@ func ParseIngress(conf *config.Configuration) (Ingress, error) {
 		return Ingress{}, ErrNoIngressRules
 	}
 	return validateIngress(conf.Ingress, originRequestFromConfig(conf.OriginRequest),
-		conf.MaxConcurrentRequests)
+		conf.MaxConcurrentRequests, conf.IncludeWebsocketsInMaxConcurrentRequests)
 }
 
 // ParseIngressFromConfigAndCLI will parse the configuration rules from config files for ingress
@@ -245,7 +245,8 @@ func validateAccessConfiguration(cfg *config.AccessConfig) error {
 	return nil
 }
 
-func validateIngress(ingress []config.UnvalidatedIngressRule, defaults OriginRequestConfig, maxConcurrentRequests uint64) (Ingress, error) {
+func validateIngress(ingress []config.UnvalidatedIngressRule, defaults OriginRequestConfig,
+	maxConcurrentRequests uint64, includeWebsocketsInMaxConcurrentRequests bool) (Ingress, error) {
 	rules := make([]Rule, len(ingress))
 	for i, r := range ingress {
 		cfg := setConfig(defaults, r.OriginRequest)
@@ -358,7 +359,7 @@ func validateIngress(ingress []config.UnvalidatedIngressRule, defaults OriginReq
 			Config:           cfg,
 		}
 	}
-	return Ingress{Rules: rules, Defaults: defaults, MaxConcurrentRequests: maxConcurrentRequests}, nil
+	return Ingress{Rules: rules, Defaults: defaults, MaxConcurrentRequests: maxConcurrentRequests, IncludeWebsocketsInMaxConcurrentRequests: includeWebsocketsInMaxConcurrentRequests}, nil
 }
 
 func validateHostname(r config.UnvalidatedIngressRule, ruleIndex, totalRules int) error {
