@@ -28,6 +28,14 @@ var (
 			Help:      "Concurrent requests proxied through each tunnel",
 		},
 	)
+	concurrentWebsocketRequests = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Namespace: connection.MetricsNamespace,
+			Subsystem: connection.TunnelSubsystem,
+			Name:      "concurrent_websocket_requests_per_tunnel",
+			Help:      "Concurrent websocket requests proxied through each tunnel",
+		},
+	)
 	responseByCode = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Namespace: connection.MetricsNamespace,
@@ -93,6 +101,7 @@ func init() {
 	prometheus.MustRegister(
 		totalRequests,
 		concurrentRequests,
+		concurrentWebsocketRequests,
 		responseByCode,
 		earlyResponseByCode,
 		requestErrors,
@@ -108,8 +117,16 @@ func incrementRequests() {
 	concurrentRequests.Inc()
 }
 
+func incrementConcurrentWebsocketRequests() {
+	concurrentWebsocketRequests.Inc()
+}
+
 func decrementConcurrentRequests() {
 	concurrentRequests.Dec()
+}
+
+func decrementConcurrentWebsocketRequests() {
+	concurrentWebsocketRequests.Dec()
 }
 
 func incrementTCPRequests() {
@@ -129,6 +146,19 @@ func decrementTCPConcurrentRequests() {
 // but that's fine because we just need an approximate value.
 func readConcurrentRequests() uint64 {
 	val := reflect.ValueOf(concurrentRequests)
+	val = val.Elem()
+	f := val.FieldByName("valBits")
+	bits := f.Uint()
+	fVal := math.Float64frombits(bits)
+	return uint64(fVal)
+}
+
+// Reads the current value of concurrentWebsocketRequests.
+// The Gauge interface does not export a method to do this, so
+// use reflection. This read is not technically thread-safe
+// but that's fine because we just need an approximate value.
+func readConcurrentWebsocketRequests() uint64 {
+	val := reflect.ValueOf(concurrentWebsocketRequests)
 	val = val.Elem()
 	f := val.FieldByName("valBits")
 	bits := f.Uint()

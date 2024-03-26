@@ -79,9 +79,10 @@ type Ingress struct {
 	// Set of ingress rules that are not added to remote config, e.g. management
 	InternalRules []Rule
 	// Rules that are provided by the user from remote or local configuration
-	Rules                 []Rule              `json:"ingress"`
-	Defaults              OriginRequestConfig `json:"originRequest"`
-	MaxConcurrentRequests uint64              `json:"maxConcurrentRequests"`
+	Rules                                    []Rule              `json:"ingress"`
+	Defaults                                 OriginRequestConfig `json:"originRequest"`
+	MaxConcurrentRequests                    uint64              `json:"maxConcurrentRequests"`
+	IncludeWebsocketsInMaxConcurrentRequests bool                `json:"includeWebsocketsInMaxConcurrentRequests"`
 }
 
 // ParseIngress parses ingress rules, but does not send HTTP requests to the origins.
@@ -89,7 +90,8 @@ func ParseIngress(conf *config.Configuration) (Ingress, error) {
 	if conf == nil || len(conf.Ingress) == 0 {
 		return Ingress{}, ErrNoIngressRules
 	}
-	return validateIngress(conf.Ingress, originRequestFromConfig(conf.OriginRequest), conf.MaxConcurrentRequests)
+	return validateIngress(conf.Ingress, originRequestFromConfig(conf.OriginRequest),
+		conf.MaxConcurrentRequests)
 }
 
 // ParseIngressFromConfigAndCLI will parse the configuration rules from config files for ingress
